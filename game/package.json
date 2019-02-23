@@ -23,6 +23,6 @@
   "dependencies": {
     "react": "^16.6.0",
     "react-dom": "^16.6.0",
-	"pixi.js": "4.8.5"
+    "pixi.js": "4.8.5"
   }
 }
