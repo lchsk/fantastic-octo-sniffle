@@ -34,7 +34,14 @@ var setUpControls = (() => {
 })();
 
 
-const ANIMATIONS = ["Dead", "Idle", "Idle Aim", "Shoot", "Throw", "Walk", "Walk Aim"];
+// const ANIMATIONS = ["Dead", "Idle", "Idle Aim", "Shoot", "Throw", "Walk", "Walk Aim"];
+const ANIMATIONS = ["Climb", "Crouch", "Crouch_Aim", "Crouch_Melee", "Crouch_Shoot",
+                    "Crouch_Throw", "Dead", "Happy", "Hurt", "Idle", "Idle_Aim",
+                    "Jump", "Jump_Melee", "Jump_Shoot", "Jump_Throw", "Melee", "Run",
+                    "Run_Shoot", "Shoot", "Throw", "Walk", "Walk_Shoot"];
+
+
+
 const SIDES = ["back", "front", "left", "right"];
 
 const SOLDIER_SIDE = {
@@ -76,46 +83,24 @@ const ANIMATIONS_LOOP = {
 
 const ANIMATIONS_SPEED = {
     DEAD: 0.1,
-    THROW: 0.1,
+    THROW: 0.2,
     IDLE_AIM: 0.08,
     IDLE: 0.08,
-    SHOOT: 0.2,
+    SHOOT: 0.35,
     WALK: 0.14,
     WALK_AIM: 0.14,
 };
 
 const SOLDIER_AUTOMATIC_FIRE = {
-    soldier1: true,
+    Soldier1: true,
+    Soldier2: true,
+    Soldier3: true,
+    Soldier4: true,
 };
-
-const EXCEPTIONS = {
-    back: {
-        Shoot: 3,
-        Dead: 5,
-    },
-    left: {
-        Dead: 5,
-    },
-    right: {
-        Dead: 5,
-    },
-    front: {
-        Dead: 5,
-    },
-};
-
 
 const SOLDIER_SCALE = 0.5;
-
-function getMaxIdx(side, animation) {
-    if (EXCEPTIONS.hasOwnProperty(side)) {
-        if (EXCEPTIONS[side].hasOwnProperty(animation)) {
-            return EXCEPTIONS[side][animation];
-        }
-    }
-
-    return 4;
-}
+const IMAGES_PER_ANIMATION = 10;
+const SOLDIERS_COUNT = 1;
 
 class Resources {
     constructor() {
@@ -127,26 +112,21 @@ class Resources {
 
         this.soldiers = [];
 
-        for (var i = 1; i <= 1; i++) {
-            this.soldiers.push('soldier' + i);
+        for (var i = 1; i <= SOLDIERS_COUNT; i++) {
+            this.soldiers.push('Soldier' + i);
         }
     }
 
     load() {
-        for (var soldier_i = 0; soldier_i < this.soldiers.length; soldier_i++) {
-            for (var animation_i = 0; animation_i < this.animations.length; animation_i++) {
-                for (var side_i = 0; side_i < this.sides.length; side_i++) {
-                    const animation = this.animations[animation_i];
-                    const side = this.sides[side_i];
+        for (let soldierIdx = 0; soldierIdx < this.soldiers.length; soldierIdx++) {
+            for (let animationIds = 0; animationIds < this.animations.length; animationIds++) {
+                const animation = this.animations[animationIds];
 
-                    const maxIdx = getMaxIdx(side, animation);
+                for (let i = 0; i < IMAGES_PER_ANIMATION; i++) {
+                    const soldier = this.soldiers[soldierIdx];
+                    const filename = `${animation}__00${i}.png`;
 
-                    for (var i = 1; i <= maxIdx; i++) {
-                        const soldier = this.soldiers[soldier_i];
-                        const filename = `${animation} (${i}).png`;
-
-                        this.loader.add(`${soldier}_${side}_${filename}`, `${soldier}/${side}/${filename}`);
-                    }
+                    this.loader.add(`${soldier}_${filename}`, `${soldier}/${filename}`);
                 }
             }
         }
@@ -164,26 +144,33 @@ class Soldier {
         this.automaticFire = SOLDIER_AUTOMATIC_FIRE[identifier];
         this.animation = null;
         this.state = SOLDIER_STATE.IDLE;
-        this.side = SOLDIER_SIDE.LEFT;
+        this.side = SOLDIER_SIDE.RIGHT;
 
-        this.animations = {
-            back: {},
-            front: {},
-            left: {},
-            right: {},
-        };
+        this.animations = {};
     }
 
     init() {
         if (!this.animation) {
             const animationName = SOLDIER_ANIMATIONS[this.state];
-            this.animation = new PIXI.extras.AnimatedSprite(this.animations[this.side][animationName]);
+            this.animation = new PIXI.extras.AnimatedSprite(this.animations[animationName]);
         }
+    }
+
+    turnRight() {
+        this.animation.scale.set(SOLDIER_SCALE, SOLDIER_SCALE);
+    }
+
+    turnLeft() {
+        this.animation.scale.set(-SOLDIER_SCALE, SOLDIER_SCALE);
+    }
+
+    setPosition(x, y) {
+        this.animation.position.set(x, y);
     }
 
     activateAnimation() {
         const animationName = SOLDIER_ANIMATIONS[this.state];
-        this.animation.textures = this.animations[this.side][animationName];
+        this.animation.textures = this.animations[animationName];
 
         let loop = ANIMATIONS_LOOP[this.state];
 
@@ -192,43 +179,43 @@ class Soldier {
         }
 
         this.animation.loop = loop;
-
-        this.animation.scale.set(SOLDIER_SCALE);
         this.animation.animationSpeed = ANIMATIONS_SPEED[this.state];
+        this.animation.anchor.set(0.5, 0.5);
+
+        if (this.side === SOLDIER_SIDE.LEFT) {
+            this.turnLeft();
+        } else {
+            this.turnRight();
+        }
 
         this.animation.gotoAndPlay(0);
     }
 }
 
-function addAnimations(soldier, animation, side) {
+function addAnimations(soldier, animation) {
     let textures = [];
 
-    const maxIdx = getMaxIdx(side, animation);
-
-    for (let i = 1; i <= maxIdx; i++) {
-        const name = `${soldier.identifier}_${side}_${animation} (${i}).png`;
+    for (let i = 0; i < IMAGES_PER_ANIMATION; i++) {
+        const name = `${soldier.identifier}_${animation}__00${i}.png`;
         let texture = PIXI.Texture.fromFrame(name);
+
         textures.push(texture);
     }
 
-    soldier.animations[side][animation] = textures;
+    soldier.animations[animation] = textures;
 }
 
-var soldier = new Soldier("soldier1");
+var soldier = new Soldier("Soldier1");
 
 function onAssetsLoaded(loader, res) {
-    for (var i = 0; i < SIDES.length; i++) {
-        const side = SIDES[i];
+    for (var j = 0; j < ANIMATIONS.length; j++) {
+        const animation = ANIMATIONS[j];
 
-        for (var j = 0; j < ANIMATIONS.length; j++) {
-            const animation = ANIMATIONS[j];
-
-            addAnimations(soldier, animation, "left");
-            addAnimations(soldier, animation, "right");
-        }
+        addAnimations(soldier, animation);
     }
 
     soldier.init();
+    soldier.setPosition(200, 200);
     soldier.activateAnimation();
 
     app.stage.addChild(soldier.animation);
@@ -252,11 +239,11 @@ app.ticker.add(() => {
     if (keys.isDown(keys.codes.RIGHT)) {
         soldier.animation.x += getSoldierSpeed(delta);
         nextState = SOLDIER_STATE.WALK;
-        nextSide = SOLDIER_SIDE.LEFT;
+        nextSide = SOLDIER_SIDE.RIGHT;
     } else if (keys.isDown(keys.codes.LEFT)) {
         soldier.animation.x -= getSoldierSpeed(delta);
         nextState = SOLDIER_STATE.WALK;
-        nextSide = SOLDIER_SIDE.RIGHT;
+        nextSide = SOLDIER_SIDE.LEFT;
     } else if (keys.isDown(keys.codes.DOWN)) {
 
     } else if (keys.isDown(keys.codes.UP)) {
